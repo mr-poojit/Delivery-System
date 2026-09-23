@@ -68,6 +68,7 @@ def simulate(data, random_delays=False, seed=None, joining_agent=None, return_ro
     midpoint = len(packages) // 2
 
     for package_index, package in enumerate(packages):
+        # A joining agent becomes available before the first package in the second half.
         if joining_agent and package_index == midpoint:
             joining_id = joining_agent["id"]
             if joining_id in agents:
@@ -86,12 +87,14 @@ def simulate(data, random_delays=False, seed=None, joining_agent=None, return_ro
         if warehouse_id not in warehouses:
             raise ValueError(f"Package {package['id']} references unknown warehouse {warehouse_id}")
 
+        # Assignment is based on the agent's distance to the package warehouse.
         assigned_agent = min(
             agents,
             key=lambda agent_id, warehouse_id=warehouse_id: euclidean_distance(
                 agents[agent_id], warehouses[warehouse_id]
             ),
         )
+        # Each package route is agent -> warehouse -> destination.
         distance = euclidean_distance(agents[assigned_agent], warehouses[warehouse_id])
         distance += euclidean_distance(warehouses[warehouse_id], package["destination"])
         report[assigned_agent]["packages_delivered"] += 1
@@ -107,6 +110,7 @@ def simulate(data, random_delays=False, seed=None, joining_agent=None, return_ro
             if seed is None:
                 delay_minutes = secrets.randbelow(26) + 5
             else:
+                # Hashing the seed and package ID gives repeatable bonus-test results.
                 seed_text = f"{seed}:{package['id']}".encode("utf-8")
                 delay_minutes = int.from_bytes(hashlib.sha256(seed_text).digest()[:4], "big") % 26 + 5
             report[assigned_agent]["total_delay_minutes"] += delay_minutes
